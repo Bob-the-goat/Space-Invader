@@ -130,7 +130,7 @@ function update() {
  
             if (alien.y + alien.height >= ship.y) {
                 gameOver = true;
-                goTimer = 200;
+                goTimer =100;
             }
         }
     }
@@ -326,3 +326,4 @@ function drawStarting() {
    context.font = "20px 'Courier New' , Monospace";
    context.fillText("Press SPACE to Start",boardWidth / 2 , boardHeight / 2 +20);
 }
+
