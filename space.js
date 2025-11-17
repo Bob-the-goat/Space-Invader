@@ -34,14 +34,17 @@ let alienRows = 2;
 let alienColumns = 3;
 let alienCount = 0;
 let alienVelocityX = 1;
+let wTimer = 0;
+let wnumber = 1;
 
 // Bullet variables:
 let bulletArray = [];
 const  bulletVelocityY = -10;
 
-
 let score = 0;
 let gameOver = false;
+let started = false;
+let goTimer = 0;
 let highscore = 0;
 
 //More alien stuff:
@@ -85,14 +88,27 @@ window.onload = function() {
 
 
 function update() {
-    animationFrameId = requestAnimationFrame(update);
+   animationFrameId = requestAnimationFrame(update);
+  
+   context.clearRect(0,0,board.width,board.height);
+
+   if (!started) {
+    drawStarting();
+    return;
+  } 
+  
+ 
 
     if (gameOver) {
       if (score > highscore)  {
         highscore = score;
       }
       drawGameOver();
-        return;
+
+      if (goTimer > 0){
+        goTimer--;
+      }
+      return;
     }
 
 
@@ -114,6 +130,7 @@ function update() {
  
             if (alien.y + alien.height >= ship.y) {
                 gameOver = true;
+                goTimer = 200;
             }
         }
     }
@@ -152,24 +169,48 @@ function update() {
         alienArray = [];
         bulletArray = [];
         createAliens();
-    }
+        //Message after wave defeated
+        wTimer = 100;
+        wnumber++
+        }
+    
 
+    if (wTimer>0) {
+        wTimer--;
+        context.fillStyle = "green"
+        context.font = "35px 'Courier New , Monospace'";
+        context.textAlign = "center";
+        if (wnumber == 5 && wTimer>0) {
+         context.fillText("WAVE : " + wnumber , boardWidth/2 , boardHeight/2+100);
+         context.fillText("It's Getting Harder!",boardWidth / 2,boardHeight / 2 +135);
+        } else {
+         context.fillText("WAVE : " + wnumber , boardWidth/2 , boardHeight / 2 + 80);
+        }
+      }
 
     context.fillStyle = "green";
-    context.font = "20px 'Courier New', monospace";
+    context.font = "20px 'Courier New', Monospace";
     context.textAlign = "left"
     context.fillText("Score : " + score, 15, 20);
 
     context.fillStyle = "orange";
     context.textAlign = "right"
     context.fillText("Highscore : " + highscore, board.width - 15, 20);
+
 }
 
-
 function handleKeyDown(e) {
-    if (gameOver && e.code == "Space") {
+  if(!started && e.code == "Space") {
+    started = true;
+    return;
+  }  
+  
+  
+  if (gameOver && e.code == "Space") {
+      if (goTimer <= 0) {
         reset();
-        return;
+      }  
+      return;
     }
 
     if (!gameOver) {
@@ -244,14 +285,13 @@ function drawGameOver() {
 
     const textMetrics = context.measureText(gameOverText);
     const textWidth = textMetrics.width;
-
+    //AI:
     context.fillRect(textXposition - textWidth / 2, textYposition + 10, textWidth, underlineHeight);
-    let offset = textMetrics.actualBoundingBoxAscent || 60;//AI
-    context.fillStyle = "white";
+    let offset = textMetrics.actualBoundingBoxAscent || 60;
+    context.fillStyle = "blue";
     context.font = "18px 'Courier New', monospace";
     context.fillText("Press the SPACE BAR to Play Again", textXposition, textYposition + offset +20);
 }
-
 // redeclaring variable
 function reset() {
   if (animationFrameId){
@@ -259,6 +299,7 @@ function reset() {
   }  
   gameOver = false;
     score = 0;
+    wnumber = 1;
 
     ship.x = shipX;
     ship.y = shipY;
@@ -272,4 +313,16 @@ function reset() {
     createAliens();
     canshoot = true;
     animationFrameId = requestAnimationFrame(update);
+}
+//Starting screen
+function drawStarting() {
+   context.clearRect(0,0,board.width,board.height);
+  
+   context.fillStyle = "white";
+   context.font = "55px 'Courier New' , Monospace";
+   context.textAlign = "center";
+   context.fillText("SPACE INVADERS",boardWidth/2,boardHeight / 2 - 80);
+
+   context.font = "20px 'Courier New' , Monospace";
+   context.fillText("Press SPACE to Start",boardWidth / 2 , boardHeight / 2 +20);
 }
