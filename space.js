@@ -23,6 +23,20 @@ let ship = {
 
 let shipImg;
 let shipVelocityX = tileSize;
+//Sound variables:
+
+let shooot = new Audio ("./bullet.wav");
+let explosion = new Audio ("./explosion.wav");
+let newhighscore = new Audio ("./highscore.wav");
+let gameover = new Audio ("./Gameover.wav");
+let start = new Audio ("./start.wav");
+let newwave = new Audio ("./wave.wav")
+
+let playedGOSound = false;
+let wPlayed = false;
+
+shooot.volume = 0.6;
+explosion.volume = 0.2;
 
 // Alien variables:
 let alienArray = [];
@@ -96,27 +110,29 @@ function update() {
     drawStarting();
     return;
   } 
-  
- 
-
-    if (gameOver) {
-      if (score > highscore)  {
-        highscore = score;
-      }
-      drawGameOver();
-
-      if (goTimer > 0){
-        goTimer--;
-      }
-      return;
+if (gameOver) {
+    if (!playedGOSound) {
+        if (score > highscore) {
+            highscore = score;
+            newhighscore.currentTime = 0;
+            newhighscore.play();
+            goTimer = 180;
+            playedGOSound = true;
+            return;
+        }
+        gameover.currentTime = 0;
+        gameover.play();
+        playedGOSound = true;
     }
-
-
+    drawGameOver();
+    if (goTimer > 0) {
+        goTimer--;
+    }
+    return;
+}
     context.clearRect(0, 0, board.width, board.height);
 
-
     context.drawImage(shipImg, ship.x, ship.y, ship.width, ship.height);
-
 
     let edgeHit = false;
     for (let alien of alienArray) {
@@ -126,11 +142,9 @@ function update() {
                 edgeHit = true;
             }
             context.drawImage(alien.img, alien.x, alien.y, alien.width, alien.height);
-
- 
             if (alien.y + alien.height >= ship.y) {
                 gameOver = true;
-                goTimer =100;
+                goTimer = 100;
             }
         }
     }
@@ -154,6 +168,8 @@ function update() {
                 alien.alive = false;
                 alienCount--;
                 score += 10;
+                explosion.currentTime = 0;
+                explosion.play();
             }
         }
     }
@@ -172,6 +188,7 @@ function update() {
         //Message after wave defeated
         wTimer = 100;
         wnumber++
+        wPlayed = false;
         }
     
 
@@ -180,11 +197,17 @@ function update() {
         context.fillStyle = "green"
         context.font = "35px 'Courier New , Monospace'";
         context.textAlign = "center";
+        if (!wPlayed) {
+          newwave.currentTime = 0;
+          newwave.play();    
+          wPlayed = true;
+        }
         if (wnumber == 5 && wTimer>0) {
          context.fillText("WAVE : " + wnumber , boardWidth/2 , boardHeight/2+100);
          context.fillText("It's Getting Harder!",boardWidth / 2,boardHeight / 2 +135);
         } else {
          context.fillText("WAVE : " + wnumber , boardWidth/2 , boardHeight / 2 + 80);
+      
         }
       }
 
@@ -202,6 +225,8 @@ function update() {
 function handleKeyDown(e) {
   if(!started && e.code == "Space") {
     started = true;
+    start.currentTime = 0;
+    start.play();
     return;
   }  
   
@@ -219,7 +244,7 @@ function handleKeyDown(e) {
         } else if (e.code == "ArrowRight" && ship.x + shipVelocityX + ship.width <= board.width) {
             ship.x += shipVelocityX;
         } else if (e.code == "Space" && canshoot) {
-            shootBullet();
+            shoot();
             canshoot = false;
         }
     }
@@ -229,7 +254,7 @@ function handleKeyDown(e) {
     canshoot = true;
    }
   });
-function shootBullet() {
+function shoot() {
     let bullet = {
         x: ship.x + ship.width / 2 - tileSize / 16,
         y: ship.y,
@@ -238,6 +263,9 @@ function shootBullet() {
         used: false
     };
     bulletArray.push(bullet);
+
+    shooot.currentTime = 0;
+    shooot.play();
 }
 
 // Creating aliens
@@ -272,12 +300,17 @@ function detectCollision(a, b) {
 function drawGameOver() {
     const textYposition = boardHeight / 2;
     const textXposition = boardWidth / 2;
-
-    context.fillStyle = "blue";
+   if (score >  highscore){
+    context.fillStyle = "green";
     context.font = "24px 'Courier New', monospace";
     context.textAlign = "center";
-    context.fillText("HIGH SCORE : " + highscore, textXposition,textYposition - 60);
-    
+    context.fillText("NEW HIGH SCORE : " + highscore, textXposition,textYposition - 60);
+   }else {
+      context.fillstyle = "blue";
+      context.font = "24px 'Courier New', monospace";
+      context.textAlign = "center";
+      context.fillText("HIGH SCORE :" + highscore , textXposition , textYposition - 60);
+   }
     context.fillStyle = "red";
     context.font = "60px 'Courier New', monospace";
     context.textAlign = "center";
@@ -291,6 +324,7 @@ function drawGameOver() {
     context.fillStyle = "blue";
     context.font = "18px 'Courier New', monospace";
     context.fillText("Press the SPACE BAR to Play Again", textXposition, textYposition + offset +20);
+    
 }
 // redeclaring variable
 function reset() {
@@ -312,12 +346,15 @@ function reset() {
     bulletArray = [];
     createAliens();
     canshoot = true;
+    playedGOSound = false;
     animationFrameId = requestAnimationFrame(update);
+
 }
 //Starting screen
 function drawStarting() {
    context.clearRect(0,0,board.width,board.height);
-  
+   start.currentTime = 0;
+   start.play();
    context.fillStyle = "white";
    context.font = "55px 'Courier New' , Monospace";
    context.textAlign = "center";
@@ -326,4 +363,3 @@ function drawStarting() {
    context.font = "20px 'Courier New' , Monospace";
    context.fillText("Press SPACE to Start",boardWidth / 2 , boardHeight / 2 +20);
 }
-
