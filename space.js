@@ -8,12 +8,14 @@ let boardWidth = tileSize * columns;
 let boardHeight = tileSize * rows;
 let context;
 
+let highscoreb = false;
+
 // Ship variables:
 let shipWidth = tileSize * 2;
 let shipHeight = tileSize;
 let shipX = tileSize * columns / 2 - tileSize;
 let shipY = tileSize * rows - tileSize * 2;
-
+let lives = 3;
 let ship = {
     x: shipX,
     y: shipY,
@@ -39,7 +41,9 @@ shooot.volume = 0.6;
 explosion.volume = 0.2;
 
 // Alien variables:
+let alienBArray = [];
 let alienArray = [];
+const alienBVelocity = 5;
 let alienWidth = tileSize * 2;
 let alienHeight = tileSize;
 let alienX = tileSize;
@@ -77,7 +81,6 @@ window.onload = function() {
     board.width = boardWidth;
     board.height = boardHeight;
     context = board.getContext("2d");
-
     // Loading images
     shipImg = new Image();
     shipImg.src = "./ship.png";
@@ -90,22 +93,16 @@ window.onload = function() {
     alienmImg.src = "./alien-magenta.png";
     alienyImg = new Image();
     alienyImg.src = "./alien-yellow.png";
-
+    
     alienImagesArray = [alienImg, aliencImg, alienmImg, alienyImg];
-
-
     createAliens();
     animationFrameId = requestAnimationFrame(update);
 
     document.addEventListener("keydown", handleKeyDown);
 }
-
-
 function update() {
    animationFrameId = requestAnimationFrame(update);
-  
    context.clearRect(0,0,board.width,board.height);
-
    if (!started) {
     drawStarting();
     return;
@@ -118,6 +115,7 @@ if (gameOver) {
             newhighscore.play();
             goTimer = 180;
             playedGOSound = true;
+            highscoreb = true;
             return;
         }
         gameover.currentTime = 0;
@@ -131,9 +129,7 @@ if (gameOver) {
     return;
 }
     context.clearRect(0, 0, board.width, board.height);
-
     context.drawImage(shipImg, ship.x, ship.y, ship.width, ship.height);
-
     let edgeHit = false;
     for (let alien of alienArray) {
         if (alien.alive) {
@@ -148,14 +144,12 @@ if (gameOver) {
             }
         }
     }
-
     if (edgeHit) {
         alienVelocityX *= -1;
         for (let alien of alienArray) {
             alien.y += alienHeight;
         }
     }
-
     //  bullets
     for (let bullet of bulletArray) {
         bullet.y += bulletVelocityY;
@@ -168,16 +162,45 @@ if (gameOver) {
                 alien.alive = false;
                 alienCount--;
                 score += 10;
+                explosion.volume = 0.3;
                 explosion.currentTime = 0;
                 explosion.play();
             }
         }
     }
-
-
+    if(Math.random() < 0.02) {
+       let shooters = alienArray.filter(a => a.alive);
+       if (shooters.length > 0) {
+          let shooter = shooters[Math.floor(Math.random() * shooters.length)];
+          alienBArray.push({
+          x : shooter.x + shooter.width / 2 - 2,
+          y : shooter.y + shooter.height,
+          width : 4,
+          height : 10,
+          used : false
+      });
+  } 
+}  
     bulletArray = bulletArray.filter(b => !b.used && b.y > 0);
 
-   
+    for (let bullet of alienBArray) {
+      bullet.y += alienBVelocity;
+      context.fillStyle = "red";
+      context.fillRect(bullet.x , bullet.y , bullet.width , bullet.height);
+
+      if (!bullet.used && detectCollision (bullet,ship)){
+        bullet.used = true;
+        lives -= 1;
+        goTimer = 100;
+        explosion.volume = 1;
+        explosion.currentTime = 0;
+        explosion.play();
+   }
+}
+if (lives == 0){
+  gameOver = true;
+}
+alienBArray = alienBArray.filter (b => !b.used && b.y < boardHeight);
     if (alienCount == 0) {
         alienColumns = Math.min(alienColumns + 1, columns / 2 - 2);
         alienRows = Math.min(alienRows + 1, rows - 4);
@@ -185,13 +208,11 @@ if (gameOver) {
         alienArray = [];
         bulletArray = [];
         createAliens();
-        //Message after wave defeated
         wTimer = 100;
         wnumber++
         wPlayed = false;
         }
     
-
     if (wTimer>0) {
         wTimer--;
         context.fillStyle = "green"
@@ -207,7 +228,6 @@ if (gameOver) {
          context.fillText("It's Getting Harder!",boardWidth / 2,boardHeight / 2 +135);
         } else {
          context.fillText("WAVE : " + wnumber , boardWidth/2 , boardHeight / 2 + 80);
-      
         }
       }
 
@@ -218,26 +238,26 @@ if (gameOver) {
 
     context.fillStyle = "orange";
     context.textAlign = "right"
-    context.fillText("Highscore : " + highscore, board.width - 15, 20);
+    context.fillText("Highscore : " + highscore, board.width - 10, 20);
+
+    context.fillStyle = "yellow";
+    context.textAlign = "center";
+    context.fillText("Lives : " + lives , 245 ,20 );
 
 }
-
 function handleKeyDown(e) {
   if(!started && e.code == "Space") {
     started = true;
     start.currentTime = 0;
     start.play();
     return;
-  }  
-  
-  
+  }   
   if (gameOver && e.code == "Space") {
       if (goTimer <= 0) {
         reset();
       }  
       return;
     }
-
     if (!gameOver) {
         if (e.code == "ArrowLeft" && ship.x - shipVelocityX >= 0) {
             ship.x -= shipVelocityX;
@@ -268,7 +288,7 @@ function shoot() {
     shooot.play();
 }
 
-// Creating aliens
+// Creating aliens:
 function createAliens() {
     for (let c = 0; c < alienColumns; c++) {
         for (let r = 0; r < alienRows; r++) {
@@ -296,20 +316,19 @@ function detectCollision(a, b) {
            a.y + a.height > b.y;
 }
 
-
 function drawGameOver() {
     const textYposition = boardHeight / 2;
     const textXposition = boardWidth / 2;
-   if (score >  highscore){
+   if (highscoreb) {
     context.fillStyle = "green";
     context.font = "24px 'Courier New', monospace";
     context.textAlign = "center";
     context.fillText("NEW HIGH SCORE : " + highscore, textXposition,textYposition - 60);
    }else {
-      context.fillstyle = "blue";
-      context.font = "24px 'Courier New', monospace";
-      context.textAlign = "center";
-      context.fillText("HIGH SCORE :" + highscore , textXposition , textYposition - 60);
+    context.fillstyle = "yellow";
+    context.font = "24px 'Courier New', monospace";
+    context.textAlign = "center";
+    context.fillText("HIGH SCORE :" + highscore , textXposition , textYposition - 60);
    }
     context.fillStyle = "red";
     context.font = "60px 'Courier New', monospace";
@@ -324,7 +343,6 @@ function drawGameOver() {
     context.fillStyle = "blue";
     context.font = "18px 'Courier New', monospace";
     context.fillText("Press the SPACE BAR to Play Again", textXposition, textYposition + offset +20);
-    
 }
 // redeclaring variable
 function reset() {
@@ -334,7 +352,9 @@ function reset() {
   gameOver = false;
     score = 0;
     wnumber = 1;
-
+    lives = 3;
+    highscoreb = false;
+    explosion.volume = 0.2;
     ship.x = shipX;
     ship.y = shipY;
 
@@ -344,11 +364,11 @@ function reset() {
 
     alienArray = [];
     bulletArray = [];
+    alienBArray = [];
     createAliens();
     canshoot = true;
     playedGOSound = false;
     animationFrameId = requestAnimationFrame(update);
-
 }
 //Starting screen
 function drawStarting() {
