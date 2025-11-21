@@ -10,6 +10,12 @@ let context;
 
 let highscoreb = false;
 
+// Powerups:
+
+let powerups = [];
+let powerUpTypes = ["shield","life"];
+let shieldA = false;
+
 // Ship variables:
 let shipWidth = tileSize * 2;
 let shipHeight = tileSize;
@@ -25,7 +31,13 @@ let ship = {
 
 let shipImg;
 let shipVelocityX = tileSize;
-//Sound variables:
+
+// Shield:
+
+let block = null;
+let shieldT = null;
+
+// Sound variables:
 
 let shooot = new Audio ("./bullet.wav");
 let explosion = new Audio ("./explosion.wav");
@@ -36,6 +48,7 @@ let newwave = new Audio ("./wave.wav")
 
 let playedGOSound = false;
 let wPlayed = false;
+let ssPlayed = false;
 
 shooot.volume = 0.6;
 explosion.volume = 0.2;
@@ -130,6 +143,15 @@ if (gameOver) {
 }
     context.clearRect(0, 0, board.width, board.height);
     context.drawImage(shipImg, ship.x, ship.y, ship.width, ship.height);
+    if (shieldA && block) {
+        block.x = ship.x - 10;
+        block.y = ship.y -20;
+        context.fillStyle = "yellow";
+        context.fillRect(block.x , block.y , block.width , block.height)
+    }
+    
+    
+    
     let edgeHit = false;
     for (let alien of alienArray) {
         if (alien.alive) {
@@ -161,6 +183,7 @@ if (gameOver) {
                 bullet.used = true;
                 alien.alive = false;
                 alienCount--;
+                spawnPowerU(alien.x + alien.width/2 , alien.y + alien.height/2);
                 score += 10;
                 explosion.volume = 0.3;
                 explosion.currentTime = 0;
@@ -187,15 +210,24 @@ if (gameOver) {
       bullet.y += alienBVelocity;
       context.fillStyle = "red";
       context.fillRect(bullet.x , bullet.y , bullet.width , bullet.height);
+        
+        if (block && detectCollision(bullet,block)) {
+            bullet.used = true ; 
+            explosion.volume = 0.2;
+            explosion.currentTime = 0;
+            explosion.play();
+            continue;
+        }
 
-      if (!bullet.used && detectCollision (bullet,ship)){
+
+    if (!bullet.used && detectCollision (bullet,ship)){
         bullet.used = true;
         lives -= 1;
         goTimer = 100;
         explosion.volume = 1;
         explosion.currentTime = 0;
         explosion.play();
-   }
+    }
 }
 if (lives == 0){
   gameOver = true;
@@ -204,6 +236,7 @@ alienBArray = alienBArray.filter (b => !b.used && b.y < boardHeight);
     if (alienCount == 0) {
         alienColumns = Math.min(alienColumns + 1, columns / 2 - 2);
         alienRows = Math.min(alienRows + 1, rows - 4);
+        
         alienVelocityX += 0.2;
         alienArray = [];
         bulletArray = [];
@@ -243,8 +276,28 @@ alienBArray = alienBArray.filter (b => !b.used && b.y < boardHeight);
     context.fillStyle = "yellow";
     context.textAlign = "center";
     context.fillText("Lives : " + lives , 245 ,20 );
+    
+    for (let p of powerups) {
+        if (!p.collected) {
+            p.y +=2;
+            
+            context.fillStyle = (p.type == "shield") ? "cyan" : "pink";//AI (This line)
+            context.fillRect(p.x,p.y,p.width,p.height);
+        
+            if (detectCollision(p,ship)){
+                p.collected = true;
+                applyPowerU(p.type);
+            }
+        }
+    }
+    powerups = powerups.filter(p => !p.collected && p.y < boardHeight);//This line is also AI
 
 }
+
+
+
+
+
 function handleKeyDown(e) {
   if(!started && e.code == "Space") {
     started = true;
@@ -325,7 +378,7 @@ function drawGameOver() {
     context.textAlign = "center";
     context.fillText("NEW HIGH SCORE : " + highscore, textXposition,textYposition - 60);
    }else {
-    context.fillstyle = "yellow";
+    context.fillStyle = "yellow";
     context.font = "24px 'Courier New', monospace";
     context.textAlign = "center";
     context.fillText("HIGH SCORE :" + highscore , textXposition , textYposition - 60);
@@ -368,13 +421,17 @@ function reset() {
     createAliens();
     canshoot = true;
     playedGOSound = false;
+    ssPlayed = false;
     animationFrameId = requestAnimationFrame(update);
 }
 //Starting screen
 function drawStarting() {
    context.clearRect(0,0,board.width,board.height);
-   start.currentTime = 0;
-   start.play();
+   if (!ssPlayed) {
+     start.currentTime = 0;
+     start.play();
+     ssPlayed = true;
+   }
    context.fillStyle = "white";
    context.font = "55px 'Courier New' , Monospace";
    context.textAlign = "center";
@@ -382,4 +439,41 @@ function drawStarting() {
 
    context.font = "20px 'Courier New' , Monospace";
    context.fillText("Press SPACE to Start",boardWidth / 2 , boardHeight / 2 +20);
+}
+
+function spawnPowerU(x,y) {
+ if (Math.random() < 0.08) {
+  let type = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+  powerups.push({
+    x : x - 10,
+    y : y,
+    width : 20,
+    height : 20 ,
+    type : type,
+    collected : false
+  });
+ }
+}
+
+function applyPowerU (type) {
+    if (type == "shield"){
+        shieldA = true;
+        block = {
+         x : ship.x -10,
+         y : ship.y -20,
+         width : 80,
+         height : 5
+        };
+        if (shieldT) {
+            clearTimeout(shieldT);
+        }
+        shieldT = setTimeout(() => {
+            shieldA = false;
+            block = null;
+            shieldT = null;
+        },5000);
+    }
+    if (type == "life")  {
+        lives++;
+    }
 }
